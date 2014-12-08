@@ -30,8 +30,12 @@ function AppVeyorReporter(runner) {
     tests.push(test)
   })
 
-  runner.on('end', function() {
+  runner.on('end', function(failures) {
     requestJson.newClient(process.env.APPVEYOR_API_URL).post('api/tests/batch', tests, function(err, body, resp) {
+      console.log('Err: ' + err)
+      console.log('Response: ')
+      console.log(resp)
+      process.exit(tests.filter(function(t) { return t.outcome === 'Failed' }).length)
     })
   })
 }
