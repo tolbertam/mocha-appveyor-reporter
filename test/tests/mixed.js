@@ -16,6 +16,8 @@ describe('explosions', function() {
       }, 10)
     })
 
-    it('one more', function() {})
+    it('one more failure', function() {
+      throw new Error('oops!')
+    })
   })
 })

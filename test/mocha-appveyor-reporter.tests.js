@@ -43,14 +43,42 @@ describe('mocha-appveyor', function() {
     })
   })
 
+  afterEach(function() {
+    Object.keys(require.cache).forEach(function(file) {
+      if (file && file.match(/\/test\/tests\/.*\.js$/)) {
+        delete require.cache[file]
+      }
+    })
+  })
+
   it('should project test results in the shape that AppVeyor expects', function(done) {
     mocha.addFile('test/tests/mixed.js').run(function() {
-      lastTestBatch.length.should.equal(4)
+      lastTestBatch.length.should.equal(5)
       lastTestBatch.forEach(function(test) {
         test.testName.should.be.a('string')
+        test.outcome.should.be.a('string')
         test.testFramework.should.equal('Mocha')
         test.fileName.should.contain('mixed.js')
       })
+      done()
+    })
+  })
+
+  it('should include error information in failures', function(done) {
+    mocha.addFile('test/tests/mixed.js').run(function() {
+      var failedTests = lastTestBatch.filter(function(t) { return t.outcome === 'Failed' })
+      failedTests.length.should.equal(2)
+      failedTests[0].ErrorMessage.should.equal('boom!')
+      failedTests[1].ErrorMessage.should.equal('oops!')
+      failedTests[0].ErrorStackTrace.should.match(/\/test\/tests\/mixed.js:\d{1,2}:\d{1,2}/)
+      failedTests[1].ErrorStackTrace.should.match(/\/test\/tests\/mixed.js:\d{1,2}:\d{1,2}/)
+      done()
+    })
+  })
+
+  it('should include ignored tests', function(done) {
+    mocha.addFile('test/tests/mixed.js').run(function() {
+      lastTestBatch.some(function(t) { return t.outcome === 'Ignored' }).should.be.true
       done()
     })
   })

@@ -1,27 +1,33 @@
 function AppVeyorReporter(runner) {
   var requestJson = require('request-json'),
-  tests = []
+  tests = [],
+
+  mapTest = function(test) {
+    return {
+      testName: test.fullTitle(),
+      testFramework: 'Mocha',
+      fileName: test.file,
+      outcome: test.state === 'passed' ? 'Passed' : undefined,
+      durationMilliseconds: test.duration
+    }
+  }
 
   runner.on('pass', function(test){
-    tests.push({
-      testName: test.fullTitle(),
-      testFramework: 'Mocha',
-      fileName: test.file,
-      outcome: 'Passed',
-      durationMilliseconds: test.duration
-    })
+    tests.push(mapTest(test))
   })
 
-  runner.on('fail', function(test, err) {
-    tests.push({
-      testName: test.fullTitle(),
-      testFramework: 'Mocha',
-      fileName: test.file,
-      outcome: 'Failed',
-      durationMilliseconds: test.duration,
-      ErrorMessage: err.message,
-      ErrorStackTrace: err.stack
-    })
+  runner.on('pending', function(mochaTest) {
+    var test = mapTest(mochaTest)
+    test.outcome = 'Ignored'
+    tests.push(test)
+  })
+
+  runner.on('fail', function(mochaTest, err) {
+    var test = mapTest(mochaTest)
+    test.outcome = 'Failed'
+    test.ErrorMessage = err.message
+    test.ErrorStackTrace = err.stack
+    tests.push(test)
   })
 
   runner.on('end', function() {
