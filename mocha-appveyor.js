@@ -30,27 +30,9 @@ function AppVeyorReporter(runner) {
     tests.push(test)
   })
 
-  process.stdin.resume()
-  runner.on('end', function(done) {
-    console.log('-- END -- ' + process.env.APPVEYOR_API_URL)
-    console.log(process._exiting)
-    process.nextTick(function() {
-      console.log('-- next tick -- ')
-    })
-    setTimeout(function() {
-      console.log('-- TIMEOUT -- ')
-    }, 4)
-    process.on('exit', function() {
-      console.log('-- process exit -- ')
-    })
-
+  runner.on('end', function() {
     requestJson.newClient(process.env.APPVEYOR_API_URL).post('api/tests/batch', tests, function(err, body, resp) {
-      console.log('-- POST DONE -- ')
-      console.log(err)
     })
-
-    console.log(process._getActiveHandles())
-    console.log(process._getActiveRequests())
   })
 }
 
