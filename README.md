@@ -13,5 +13,5 @@ npm install --save-dev mocha-appveyor-reporter
 #### Usage
 
 ```
-mocha --reporter mocha-appveyor
+mocha --reporter mocha-appveyor --no-exit
 ```

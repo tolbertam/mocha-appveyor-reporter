@@ -5,4 +5,4 @@ build:
   verbosity: detailed
 
 test_script:
-  - .\node_modules\.bin\mocha --reporter mocha-appveyor test/tests/mixed.js
+  - .\node_modules\.bin\mocha --reporter mocha-appveyor test/tests/mixed.js --no-exit
