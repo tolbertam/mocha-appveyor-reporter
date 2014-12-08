@@ -2,7 +2,7 @@ before_build:
   - npm install
 
 build:
-	verbosity: detailed
+  verbosity: detailed
 
 test_script:
   - .\node_modules\.bin\mocha --reporter mocha-appveyor test/tests/mixed.js
