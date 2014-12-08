@@ -28,7 +28,9 @@
     "chai": "^1.10.0",
     "mocha": "^2.0.1",
     "mockery": "^1.4.0",
-    "request-json": "^0.5.0",
     "sinon": "^1.12.1"
+  },
+  "dependencies": {
+    "request-json": "^0.5.0"
   }
 }
