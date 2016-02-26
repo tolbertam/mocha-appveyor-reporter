@@ -44,8 +44,6 @@ function AppVeyorReporter(runner) {
 	deasync.loopWhile(function() {
 		return !done;
 	});
-	
-	process.exit(tests.filter(function(t) { return t.outcome === 'Failed' }).length || (errData ? -1 : 0));
   })
 }
 

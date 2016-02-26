@@ -19,6 +19,7 @@ describe('mocha-appveyor', function() {
         jsonPost = sinon.spy(function(path, data, callback) {
           path.should.equal('api/tests/batch')
           lastTestBatch = data
+          callback();
         })
 
         return {
@@ -35,12 +36,15 @@ describe('mocha-appveyor', function() {
   })
 
   beforeEach(function() {
+	var testFileName = 'tests/mixed.js';
+	delete require.cache[require.resolve('./' + testFileName)];
+	
     lastTestBatch = null
 
     mocha = new Mocha({
       ui: 'bdd',
       reporter: 'mocha-appveyor'
-    })
+    }).addFile('test/' + testFileName)
   })
 
   afterEach(function() {
@@ -52,7 +56,8 @@ describe('mocha-appveyor', function() {
   })
 
   it('should project test results in the shape that AppVeyor expects', function(done) {
-    mocha.addFile('test/tests/mixed.js').run(function() {
+    mocha.run(function() {
+	  console.log(JSON.stringify(lastTestBatch))
       lastTestBatch.length.should.equal(5)
       lastTestBatch.forEach(function(test) {
         test.testName.should.be.a('string')
@@ -65,19 +70,21 @@ describe('mocha-appveyor', function() {
   })
 
   it('should include error information in failures', function(done) {
-    mocha.addFile('test/tests/mixed.js').run(function() {
+    mocha.run(function() {
+	  console.log(JSON.stringify(lastTestBatch))
       var failedTests = lastTestBatch.filter(function(t) { return t.outcome === 'Failed' })
       failedTests.length.should.equal(2)
       failedTests[0].ErrorMessage.should.equal('boom!')
       failedTests[1].ErrorMessage.should.equal('oops!')
-      failedTests[0].ErrorStackTrace.should.match(/\/test\/tests\/mixed.js:\d{1,2}:\d{1,2}/)
-      failedTests[1].ErrorStackTrace.should.match(/\/test\/tests\/mixed.js:\d{1,2}:\d{1,2}/)
+      failedTests[0].ErrorStackTrace.should.match(/[\/\\]test[\/\\]tests[\/\\]mixed.js:\d{1,2}:\d{1,2}/)
+      failedTests[1].ErrorStackTrace.should.match(/[\/\\]test[\/\\]tests[\/\\]mixed.js:\d{1,2}:\d{1,2}/)
       done()
     })
   })
 
   it('should include ignored tests', function(done) {
-    mocha.addFile('test/tests/mixed.js').run(function() {
+    mocha.run(function() {
+	  console.log(JSON.stringify(lastTestBatch))
       lastTestBatch.some(function(t) { return t.outcome === 'Ignored' }).should.be.true
       done()
     })
