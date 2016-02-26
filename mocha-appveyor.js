@@ -1,8 +1,10 @@
 function AppVeyorReporter(runner) {
-  var requestJson = require('request-json'),
-  tests = [],
+  var requestJson = require('request-json');
+  var deasync = require('deasync');
 
-  mapTest = function(test) {
+  var tests = [];
+
+  var mapTest = function(test) {
     return {
       testName: test.fullTitle(),
       testFramework: 'Mocha',
@@ -31,9 +33,19 @@ function AppVeyorReporter(runner) {
   })
 
   runner.on('end', function(failures) {
+	var errData;
+	var done;
+	
     requestJson.newClient(process.env.APPVEYOR_API_URL).post('api/tests/batch', tests, function(err, body, resp) {
-      process.exit(tests.filter(function(t) { return t.outcome === 'Failed' }).length || (err ? -1 : 0))
+	  done = true;
+      errData = err;
     })
+	
+	deasync.loopWhile(function() {
+		return !done;
+	});
+	
+	process.exit(tests.filter(function(t) { return t.outcome === 'Failed' }).length || (errData ? -1 : 0));
   })
 }
 
