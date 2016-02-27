@@ -84,7 +84,9 @@ function AppVeyorReporter(runner) {
   var handleConsole = function(type, original) {
     return function() {
       var args = Array.prototype.slice.call(arguments);
-      original.apply(original, arguments);
+      if(original.apply && typeof original.apply === 'function') {
+        original.apply(original, arguments);
+      }
       logEntries.push({ type: type, msg: args });
     }
   };
