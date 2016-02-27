@@ -1,7 +1,7 @@
 var mockery = require('mockery'),
 sinon = require('sinon'),
 Mocha = require('mocha'),
-reporter = require('../mocha-appveyor.js');
+reporter = require('../mocha-appveyor-reporter.js');
 require('chai').should();
 
 describe('mocha-appveyor-reporter', function() {
