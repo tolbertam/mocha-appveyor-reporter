@@ -1,8 +1,12 @@
-before_build:
+install:
+  - npm install -g mocha
   - npm install
+  - npm link
 
-build:
-  verbosity: detailed
+build: off
 
 test_script:
-  - .\node_modules\.bin\mocha --require chai --reporter mocha-appveyor test/tests/mixed.js --no-exit
+  - mocha --require chai --reporter mocha-appveyor-reporter test/tests/mixed.js
+
+cache:
+  - node_modules -> package.json

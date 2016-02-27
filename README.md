@@ -13,7 +13,7 @@ npm install --save-dev mocha-appveyor-reporter
 #### Usage
 
 ```
-mocha --reporter mocha-appveyor --no-exit
+mocha --reporter mocha-appveyor-reporter
 ```
 
 See it [in action](https://ci.appveyor.com/project/nathanboktae/mocha-appveyor-reporter/build/tests) with this repository
