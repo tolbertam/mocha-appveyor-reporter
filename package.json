@@ -1,8 +1,8 @@
 {
   "name": "mocha-appveyor-reporter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Mocha Reporter to report tests while running in AppVeyor CI",
-  "main": "mocha-appveyor.js",
+  "main": "mocha-appveyor-reporter.js",
   "scripts": {
     "test": "mocha"
   },
@@ -31,6 +31,7 @@
     "sinon": "^1.12.1"
   },
   "dependencies": {
-    "request-json": "^0.5.0"
+    "request-json": "^0.5.5",
+    "deasync": "^0.1.4"
   }
 }
