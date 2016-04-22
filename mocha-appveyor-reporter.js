@@ -4,13 +4,14 @@ var util = require('util'),
 function AppVeyorReporter(runner) {
   Base.call(this, runner);
   var request = require('request-json'),
-    deasync = require('deasync'),
     endpoint = process.env.APPVEYOR_API_URL,
     log = console.log.bind(console),
     error = console.error.bind(console),
     warn = console.warn.bind(console),
     logEntries = [],
-    client = endpoint ? request.createClient(endpoint) : null;
+    client = endpoint ? request.createClient(endpoint) : null,
+    testsPending = 0;
+
 
   if(!endpoint) {
     warn("APPVEYOR_API_URL environment variable is not set, will not report to appveyor.");
@@ -49,29 +50,14 @@ function AppVeyorReporter(runner) {
    */
   var sendTest = function(test) {
     if(client) {
-      var complete;
-      var body = null;
-      var rsp = null;
-      var err = null;
-      client.post('api/tests', test, function(e, b, r) {
-        err = e;
-        body = b;
-        rsp = r;
-        complete = true;
+      testsPending++;
+      client.post('api/tests', test, function(err, response, body) {
+        testsPending--;
+        if(err) {
+          error("Error returned from posting test result to AppVeyor for '%s'. Response: %s, Body: %s. Request Body: \n",
+            test.testName, response, body, test);
+        }
       });
-      // Timeout web request.  This should only happen in unusual circumstances where AppVeyor does not respond.
-      setTimeout(function () {
-        error = new Error("Timeout waiting for response from AppVeyor after 5000ms.");
-      }, 5000);
-      // Blocks until successful web request.  This is not ideal, but prevents test from completing before proceeding
-      // to next test or mocha exiting.
-      deasync.loopWhile(function(){
-        return !complete;
-      });
-      if(err) {
-        error("Error returned from posting test result to AppVeyor for '%s'. Response: %s, Body: %s. Request Body: \n",
-          test.testName, rsp, body, test);
-      }
     }
   };
 
@@ -123,6 +109,16 @@ function AppVeyorReporter(runner) {
     test.ErrorMessage = err.message;
     test.ErrorStackTrace = err.stack;
     sendTest(test);
+  });
+
+  runner.on('end', function() {
+    const start = new Date().getTime();
+    const timeout = start + (10000);
+    if(testsPending > 0) {
+      // this is unfortunate, tight loop for 5 seconds to allow any in flight posts to complete,
+      // otherwise this function exits and and everything is possibly torn down too soon.
+      while(new Date().getTime() < timeout) {}
+    }
   });
 }
 

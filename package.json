@@ -31,7 +31,6 @@
     "sinon": "^1.12.1"
   },
   "dependencies": {
-    "request-json": "^0.5.5",
-    "deasync": "^0.1.4"
+    "request-json": "^0.5.5"
   }
 }
