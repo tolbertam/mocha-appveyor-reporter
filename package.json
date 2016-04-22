@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nathanboktae/mocha-appveyor-reporter.git"
+    "url": "https://github.com/tolbertam/mocha-appveyor-reporter.git"
   },
   "keywords": [
     "mocha",
@@ -21,9 +21,9 @@
   "author": "Nathan Black <nathan@nathanblack.org>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/nathanboktae/mocha-appveyor-reporter/issues"
+    "url": "https://github.com/tolbertam/mocha-appveyor-reporter/issues"
   },
-  "homepage": "https://github.com/nathanboktae/mocha-appveyor-reporter",
+  "homepage": "https://github.com/tolbertam/mocha-appveyor-reporter",
   "devDependencies": {
     "chai": "^1.10.0",
     "mocha": "^2.0.1",
