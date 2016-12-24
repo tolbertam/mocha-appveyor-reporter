@@ -5,7 +5,7 @@ reporter = require('../mocha-appveyor-reporter.js');
 require('chai').should();
 
 describe('mocha-appveyor-reporter', function() {
-  var tests = [], jsonPost;
+  var tests = [], jsonPost, apiUrl = 'http://localhost:9884/';
   before(function() {
     mockery.enable({
       warnOnUnregistered: false,
@@ -14,11 +14,12 @@ describe('mocha-appveyor-reporter', function() {
 
     mockery.registerMock('request-json', {
       createClient: function(url) {
-        url.should.equal(process.env.APPVEYOR_API_URL);
+        url.should.equal(apiUrl);
 
         jsonPost = sinon.spy(function(path, data, callback) {
-          path.should.equal('api/tests');
-          tests.push(data);
+          path.should.equal('api/tests/batch');
+          // concat tests as it will be an array of tests.
+          tests = tests.concat(data);
           callback(null);
         });
 
@@ -27,8 +28,6 @@ describe('mocha-appveyor-reporter', function() {
         }
       }
     });
-
-    process.env.APPVEYOR_API_URL = 'http://localhost:9884/'
   });
 
   after(function() {
@@ -40,7 +39,10 @@ describe('mocha-appveyor-reporter', function() {
 
     mocha = new Mocha({
       ui: 'bdd',
-      reporter: reporter
+      reporter: reporter,
+      reporterOptions: {
+        appveyorApiUrl: apiUrl
+      }
     });
   });
 

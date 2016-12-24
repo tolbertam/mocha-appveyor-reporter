@@ -1,6 +1,6 @@
 {
   "name": "mocha-appveyor-reporter",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Mocha Reporter to report tests while running in AppVeyor CI",
   "main": "mocha-appveyor-reporter.js",
   "scripts": {
@@ -26,7 +26,7 @@
   "homepage": "https://github.com/tolbertam/mocha-appveyor-reporter",
   "devDependencies": {
     "chai": "^1.10.0",
-    "mocha": "^2.0.1",
+    "mocha": "^2.1.0",
     "mockery": "^1.4.0",
     "sinon": "^1.12.1"
   },

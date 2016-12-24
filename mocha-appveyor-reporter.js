@@ -1,21 +1,52 @@
 var util = require('util'),
     Base = require('mocha').reporters.Base;
 
-function AppVeyorReporter(runner) {
+function AppVeyorReporter(runner, options) {
   Base.call(this, runner);
+
+  this.options = (options && options.reporterOptions) || {};
+
+  // Default options
+  this.options.appveyorApiUrl = process.env.APPVEYOR_API_URL || this.options.appveyorApiUrl;
+  this.options.appveyorBatchSize = process.env.APPVEYOR_BATCH_SIZE || this.options.appveyorBatchSize || 100;
+  this.options.appveyorBatchIntervalInMs = process.env.APPVEYOR_BATCH_INTERVAL_IN_MS || this.options.appveyorBatchIntervalInMs || 1000;
+
   var request = require('request-json'),
-    endpoint = process.env.APPVEYOR_API_URL,
     log = console.log.bind(console),
     error = console.error.bind(console),
     warn = console.warn.bind(console),
     logEntries = [],
-    client = endpoint ? request.createClient(endpoint) : null,
-    testsPending = 0;
+    self = this;
 
-
-  if(!endpoint) {
-    warn("APPVEYOR_API_URL environment variable is not set, will not report to appveyor.");
+  if(!this.options.appveyorApiUrl) {
+    warn("appveyorApiUrl option and APPVEYOR_API_URL environment variable not set, will not report to AppVeyor.");
   }
+
+  // Client to be used to make API calls.
+  this.client = this.options.appveyorApiUrl ? request.createClient(this.options.appveyorApiUrl) : undefined;
+  // Callback to be invoked (if defined) when an in flight request is completed.
+  this.doneCb = undefined;
+  // Whether or not API call is in flight.
+  this.inFlight = false;
+  // Enqueued tests.
+  this.testQueue = [];
+  // Timeout configured to make next API call.
+  this.sendTimeout = undefined;
+
+  /**
+   * Adds test to queue of tests to be sent with next API call.
+   *
+   * May also trigger pending tests to be sent.
+   *
+   * @param test test to send.
+   */
+  var addTest = function(test) {
+    if(!self.client) {
+      return;
+    }
+    self.testQueue.push(test);
+    self.maybeSendTests();
+  };
 
   /**
    * Takes a test result and maps it to the output format that AppVeyor accepts.
@@ -45,23 +76,6 @@ function AppVeyorReporter(runner) {
   };
 
   /**
-   * Sends test to AppVeyor synchronously, will timeout after 5000ms and report any errors encountered.
-   * @param test {Object} Test generated from {@link mapTest} to send.
-   */
-  var sendTest = function(test) {
-    if(client) {
-      testsPending++;
-      client.post('api/tests', test, function(err, response, body) {
-        testsPending--;
-        if(err) {
-          error("Error returned from posting test result to AppVeyor for '%s'. Response: %s, Body: %s. Request Body: \n",
-            test.testName, response, body, test);
-        }
-      });
-    }
-  };
-
-  /**
    * @param type {String} The type of message being logged (either 'out' for stdout or anything else for stderr).
    * @param original {Function} Function to be wrapped.
    * @returns {Function} A function that wraps the given original function with behavior that records messages to
@@ -77,7 +91,7 @@ function AppVeyorReporter(runner) {
     }
   };
 
-  runner.on('test', function (test) {
+  runner.on('test', function () {
     // trap console so we can record stdout/stderr to appveyor.
     logEntries = [];
     console.log = handleConsole("out", log);
@@ -85,7 +99,7 @@ function AppVeyorReporter(runner) {
     console.error = handleConsole("err", error);
   });
 
-  runner.on('test end', function(test) {
+  runner.on('test end', function() {
     // reset console implementations to original implementation.
     console.log = log;
     console.warn = warn;
@@ -94,13 +108,13 @@ function AppVeyorReporter(runner) {
 
   runner.on('pass', function(mochaTest){
     var test = mapTest(mochaTest);
-    sendTest(test);
+    addTest(test);
   });
 
   runner.on('pending', function(mochaTest) {
     var test = mapTest(mochaTest);
     test.outcome = 'Ignored';
-    sendTest(test);
+    addTest(test);
   });
 
   runner.on('fail', function(mochaTest, err) {
@@ -108,20 +122,109 @@ function AppVeyorReporter(runner) {
     test.outcome = 'Failed';
     test.ErrorMessage = err.message;
     test.ErrorStackTrace = err.stack;
-    sendTest(test);
+    addTest(test);
   });
 
-  runner.on('end', function() {
-    const start = new Date().getTime();
-    const timeout = start + (10000);
-    if(testsPending > 0) {
-      // this is unfortunate, tight loop for 5 seconds to allow any in flight posts to complete,
-      // otherwise this function exits and and everything is possibly torn down too soon.
-      while(new Date().getTime() < timeout) {}
-    }
-  });
+  // Schedule tests to be sent initially.
+  self.scheduleTests();
 }
 
 util.inherits(AppVeyorReporter, Base);
+
+/**
+ * Schedule tests to be sent after appveyorBatchIntervalInMs.
+ */
+AppVeyorReporter.prototype.scheduleTests = function() {
+  this.sendTimeout = setTimeout(this.sendTests.bind(this), this.options.appveyorBatchIntervalInMs);
+};
+
+/**
+ * Trigger tests to be sent.
+ */
+AppVeyorReporter.prototype.sendTests = function() {
+  var self = this;
+
+  // Don't send tests if endpoint not set up.
+  if(!self.client) {
+    return;
+  }
+
+  // clear existing timeout.
+  if(self.sendTimeout) {
+    clearTimeout(self.sendTimeout);
+    self.sendTimeout = undefined;
+  }
+
+  // if queue is empty, schedule tests to be submitted later, but only if not done.
+  if(self.testQueue.length === 0) {
+    if (!self.doneCb) {
+      self.scheduleTests();
+    }
+  } else {
+    self.inFlight = true;
+    var data = this.testQueue.slice();
+    self.testQueue = [];
+    self.client.post('api/tests/batch', data, function (err, response, body) {
+      self.inFlight = false;
+      if (err) {
+        console.error("Error returned from posting test result to AppVeyor. Response: %s, Body: %s. \n.", response, body);
+      }
+      // if doneCb set, and test queue is empty, invoke doneCb, otherwise if not empty, send tests immediately.
+      if (self.doneCb) {
+        if (self.testQueue.length === 0) {
+          self.doneCb();
+          self.doneCb = undefined;
+        } else {
+          self.sendTests();
+        }
+      } else {
+        // If tests weren't ready to be sent, schedule.
+        if (!self.maybeSendTests()) {
+          self.scheduleTests();
+        }
+      }
+    });
+  }
+};
+
+/**
+ * Trigger enqueued tests to be sent to appveyor if at least appveyorBatchSize tests are enqueued and there is no API
+ * @returns {boolean}
+ */
+AppVeyorReporter.prototype.maybeSendTests = function() {
+  // if more than appveyor_batch_size tests are enqueued, send them.
+  if(!this.inFlight && this.testQueue.length >= this.options.appveyorBatchSize) {
+    this.sendTests();
+    return true;
+  } else {
+    return false;
+  }
+};
+
+/**
+ * Override done to await any in flight HTTP requests to post tests to AppVeyor.
+ *
+ * @param failures
+ * @param {Function} fn
+ */
+AppVeyorReporter.prototype.done = function (failures, fn) {
+  // register doneCb to be invoked when API call finishes.
+  var invoked = false;
+  this.doneCb = function() {
+    invoked = true;
+    fn(failures);
+  };
+
+  // If no API call in flight and there are pending tests, send them.
+  if(!this.inFlight && this.testQueue.length > 0) {
+    this.sendTests();
+  }
+
+  // If no API call is in flight and the callback hasn't been invoked yet, invoke it here.
+  if(!this.inFlight && !invoked) {
+    fn(failures);
+  }
+};
+
 
 module.exports = AppVeyorReporter;
