@@ -25,12 +25,12 @@
   },
   "homepage": "https://github.com/tolbertam/mocha-appveyor-reporter",
   "devDependencies": {
-    "chai": "^1.10.0",
-    "mocha": "^2.1.0",
-    "mockery": "^1.4.0",
-    "sinon": "^1.12.1"
+    "chai": "^4.1.2",
+    "mocha": "^5.2.0",
+    "mockery": "^2.1.0",
+    "sinon": "^6.1.4"
   },
   "dependencies": {
-    "request-json": "^0.6.1"
+    "request-json": "^0.6.3"
   }
 }
